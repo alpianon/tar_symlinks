@@ -24,7 +24,7 @@ fi
 
 # 1) setting English language in order to be able to grep relevant error messages, regardless of system locale settings
 # 2) redirecting STDERR to STDOUT, and STDOUT to /dev/null, in order to put error messages in variable $o
-o=$(LANG=en_US.UTF-8 find $1 -follow 2>&1 >/dev/null | grep "find: File system loop detected")
+o=$(LANG=en_US.UTF-8 find $1 -follow 2>&1 >/dev/null | egrep "File system loop detected|Too many levels of symbolic links")
 
 #https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash
 if [ "$o" ]; then 
