@@ -29,18 +29,31 @@ o=$(LANG=en_US.UTF-8 find $1 -follow 2>&1 >/dev/null | grep "find: File system l
 #https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash
 if [ "$o" ]; then 
   IFS=$'\n'; lines=($o); unset IFS; 
+else
+  echo "no cyclic symlink detected, calling tar normally, with -h option"
+  sleep 1
+  eval "tar -chvf \"$2\" \"$1\""
+  exit 0
 fi
 
 excl=""
+upd=""
 
+echo "creating tar archive with -h option, excluding the following filesystem loops/cyclic symlynks"
 if [ "$lines" ]; then
   for line in "${lines[@]}"; do
     IFS="'"; items=($line); unset IFS;
     excl=$excl" --exclude \"${items[1]}\""
-    echo "Excluding filesystem loop \"${items[1]}\""
+    upd=$upd" \"${items[1]}\""
+    echo "${items[1]}"
   done
 fi
-sleep 2 
-echo "Creating tar archive..."
+sleep 1 
 eval "tar$excl -chvf \"$2\" \"$1\""
+
+echo
+echo "adding previously excluded cyclic symlynks to tar archive"
+sleep 1
+eval "tar -uvf \"$2\"$upd"
+
 
