@@ -24,13 +24,11 @@ fi
 
 # 1) setting English language in order to be able to grep relevant error messages, regardless of system locale settings
 # 2) redirecting STDERR to STDOUT, and STDOUT to /dev/null, in order to put error messages in variable $o
-o=$(LANG=en_US.UTF-8 find $1 -follow 2>&1 >/dev/null | egrep "File system loop detected|Too many levels of symbolic links")
+cyclic=$(LANG=en_US.UTF-8 find $1 -follow 2>&1 >/dev/null | egrep "File system loop detected|Too many levels of symbolic links")
+broken=$(find $1 -xtype l 2>&1)
 
-#https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash
-if [ "$o" ]; then 
-  IFS=$'\n'; lines=($o); unset IFS; 
-else
-  echo "no cyclic symlink detected, calling tar normally, with -h option"
+if [ -z "$cyclic" ] && [ -z "$broken" ]; then
+  echo "no cyclic nor broken symlink detected, calling tar normally, with -h option"
   sleep 1
   eval "tar -chvf \"$2\" \"$1\""
   exit 0
@@ -39,20 +37,38 @@ fi
 excl=""
 upd=""
 
-echo "creating tar archive with -h option, excluding the following filesystem loops/cyclic symlynks"
-if [ "$lines" ]; then
-  for line in "${lines[@]}"; do
-    IFS="'"; items=($line); unset IFS;
-    excl=$excl" --exclude \"${items[1]}\""
-    upd=$upd" \"${items[1]}\""
-    echo "${items[1]}"
-  done
+echo "creating tar archive with -h option, excluding the following cyclic or broken symlynks"
+
+#https://stackoverflow.com/questions/918886/how-do-i-split-a-string-on-a-delimiter-in-bash
+if [ "$cyclic" ]; then
+  IFS=$'\n'; lines=($cyclic); unset IFS;
+  if [ "$lines" ]; then
+    for line in "${lines[@]}"; do
+      IFS="'"; items=($line); unset IFS;
+      excl=$excl" --exclude \"${items[1]}\""
+      upd=$upd" \"${items[1]}\""
+      echo "${items[1]}"
+    done
+  fi
 fi
-sleep 1 
+
+if [ "$broken" ]; then
+  IFS=$'\n'; lines=($broken); unset IFS;
+  if [ "$lines" ]; then
+    for line in "${lines[@]}"; do
+      excl=$excl" --exclude \"$line\""
+      upd=$upd" \"$line\""
+      echo "$line"
+    done
+  fi
+fi
+
+
+sleep 1
 eval "tar$excl -chvf \"$2\" \"$1\""
 
 echo
-echo "adding previously excluded cyclic symlynks to tar archive"
+echo "adding previously excluded cyclic/broken symlynks to tar archive"
 sleep 1
 eval "tar -uvf \"$2\"$upd"
 
