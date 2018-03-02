@@ -30,7 +30,7 @@ broken=$(find $1 -xtype l 2>&1)
 if [ -z "$cyclic" ] && [ -z "$broken" ]; then
   echo "no cyclic nor broken symlink detected, calling rsync normally, with -rLptgoD options"
   sleep 1
-  eval "rsync -rLptgoD \"$1\" \"$2\""
+  rsync -rLptgoD "$1" "$2"
   exit 0
 fi
 
